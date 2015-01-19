@@ -23,7 +23,7 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 describe("Nodiak Riak Client Test Suite", function() {
-    var TIMEOUT = process.env.TIMEOUT || 20000;
+    var TIMEOUT = process.env.TIMEOUT || 50000;
     var NUM_OBJECTS = parseInt(process.env.NUM_OBJECTS, 10) || 1000;
     var backend = process.env.NODIAK_BACKEND || 'http';
     var host = process.env.NODIAK_HOST || 'localhost';
@@ -35,6 +35,9 @@ describe("Nodiak Riak Client Test Suite", function() {
     
     var async = require('async');
     var should = require('should');
+    var Map = require("../lib/map");
+    var Counter = require("../lib/counter");
+    var Set = require("../lib/set");
 
     before(function(done){ // bootstrap settings and data for tests.
         this.timeout(TIMEOUT);
@@ -525,30 +528,339 @@ describe("Nodiak Riak Client Test Suite", function() {
     });
 
     describe("Using the 'Counter' class to perform CRDT Counter operations", function() {
+        var startvalue;
+        var bucket = riak.bucket('counter_test');
+        bucket.props.allow_mult = true;
+
+        it("should be able to set bucket properties for counter", function(done){
+            bucket.saveProps(function(err, response) {
+                should.not.exist(err);
+                done();
+            })
+        });
+
+        it("should be able to get the initial value of a counter", function(done) {
+            riak.counter('counter_test', 'the_count').value(function(err, response) {
+                var type = typeof(response);
+                type.should.eql('number');
+                if (!response){
+                    startvalue = 0;
+                }else{
+                    startvalue = response;
+                }
+                done();
+            });
+        });
+
+
         it("should be able to add to a counter", function(done) {
-            riak.counter('siblings_test', 'the_count').add(4, function(err, response) {
+            riak.counter('counter_test', 'the_count').add(4, function(err, response) {
                 should.not.exist(err);
                 done();
             });
         });
 
         it("should be able to subtract from a counter", function(done) {
-            riak.counter('siblings_test', 'the_count').subtract(2, function(err, response) {
+            riak.counter('counter_test', 'the_count').subtract(2, function(err, response) {
                 should.not.exist(err);
                 done();
             });
         });
 
         it("should be able to get the value of a counter", function(done) {
-            riak.counter('siblings_test', 'the_count').value(function(err, response) {
+            riak.counter('counter_test', 'the_count').value(function(err, response) {
                 should.not.exist(err);
                 var type = typeof(response);
                 type.should.eql('number');
-                response.should.eql(2);
+                response.should.eql(2+startvalue);
                 done();
             });
         });
+
     });
+
+
+    describe("Using the 'Set' class to perform CRDT Counter operations", function() {
+        it("should be able to add array to set", function(done) {
+            riak.set('set_test', 'the_set').add("str1", function(err, response) {
+                should.not.exist(err);
+                done();
+            });
+        });
+
+        it("should be able to add array to set", function(done) {
+            riak.set('set_test', 'the_set').add(["str2", "str3", "str4" ], function(err, response) {
+                should.not.exist(err);
+                done();
+            });
+        });
+
+        it("should be able to remove an element from a set", function(done) {
+            riak.set('set_test', 'the_set').remove("str2", function(err, response) {
+                should.not.exist(err);
+                done();
+            });
+        });
+
+        it("should not be able to remove non-existing element from a set", function(done) {
+            riak.set('set_test', 'the_set').remove("nonexisitnigstr2", function(err, response) {
+                should.exist(err);
+                //err.message.should.match(/nonexisitnigstr2/);
+                done();
+            });
+        });
+
+        it("should be able to get current vaue of the set and ", function(done) {
+            riak.set('set_test', 'the_set').value(function(err, value, data) {
+                should.not.exist(err);
+                value.should.length(3);
+                value.should.containEql("str1");
+                value.should.containEql("str3");
+                value.should.containEql("str4");
+                value.should.not.containEql("str2");
+                done();
+            });
+        });
+
+    });
+
+
+    describe("Using the 'Map' class to perform basic operations", function() {
+
+        it("should be able to update a register within a map", function(done) {
+            riak.map('map_test', 'the_map').register("field1", "value1", function(err, response) {
+                should.not.exist(err);
+                done();
+            });
+        });
+
+        it("should be able to update a flag within a map - using string", function(done) {
+            riak.map('map_test', 'the_map').flag("field2", "disable", function(err, response) {
+                should.not.exist(err);
+                done();
+            });
+        });
+
+        it("should be able get value of the previously updated map", function(done) {
+            riak.map('map_test', 'the_map').value(function(err, value, data) {
+                should.not.exist(err);
+                should.exist(value.field1);
+                value.field1.should.equal("value1");
+                value.field2.should.equal(false);
+                done();
+            });
+        });
+
+        it("should be able to update a register within a map - again", function(done) {
+            riak.map('map_test', 'the_map').register("field1", "value2", function(err, response) {
+                should.not.exist(err);
+                done();
+            });
+        });
+
+
+        it("should be able to update a flag within a map - using boolean", function(done) {
+            riak.map('map_test', 'the_map').flag("field2", true, function(err, response) {
+                should.not.exist(err);
+                done();
+            });
+        });
+
+        it("should be able get value of the previously updated map", function(done) {
+            riak.map('map_test', 'the_map').value(function(err, value, data) {
+                should.not.exist(err);
+                should.exist(value.field1);
+                value.field1.should.equal("value2");
+                value.field2.should.equal(true);
+                done();
+            });
+        });
+
+        it("should be able to update field in one object by casacde of operations", function(done) {
+            riak.map('map_test', 'the_map')
+                .register("Reg1", "ValReg1")
+                .register("Reg2", "ValReg2")
+                .register("Reg3", "ValReg3")
+                .flag("Flag1", false)
+                .flag("Flag2", true, function(err, response) {
+                    should.not.exist(err);
+                        riak.map('map_test', 'the_map').value(function(err, value) {
+                            should.not.exist(err);
+                            value.Reg1.should.equal("ValReg1");
+                            value.Reg2.should.equal("ValReg2");
+                            value.Reg3.should.equal("ValReg3");
+                            value.Flag1.should.equal(false);
+                            value.Flag2.should.equal(true);
+                            done();
+                        });
+            });
+        });
+
+
+        it("should be able to increement counter", function(done) {
+            this.timeout(TIMEOUT);
+            riak.map('map_test', 'the_map')
+                .counter("counter1", 5, function(err, response) {
+                    should.not.exist(err);
+                    riak.map('map_test', 'the_map').value(function(err, value) {
+                        should.not.exist(err);
+                        value.counter1.should.instanceOf(Counter);
+                        value.counter1.value(function(err,value){
+                            should.not.exist(err);
+                            (value % 5).should.equal(0);
+                            done();
+                        });
+
+                });
+            });
+        });
+
+    });
+
+    describe("Using the 'Map' perform field removal operation", function() {
+
+        it("should be able to update a register within a map", function(done) {
+            riak.map('map_test', 'the_map_remove')
+                .register("field1", "value1")
+                .register("field2", "value2", function(err, response) {
+                    should.not.exist(err);
+                    riak.map("map_test", "the_map_remove").value(function (err, value) {
+                        should.exist(value.field1);
+
+                        should.exist(value.field2);
+                        done();
+                    });
+            });
+        });
+
+        it("should be able to remove a register from previously creted map", function(done) {
+            riak.map('map_test', 'the_map_remove')
+                .register_remove("field2", function(err, response) {
+                    should.not.exist(err);
+                    riak.map("map_test", "the_map_remove").value(function (err, value){
+                        should.not.exist(err);
+                        value.field1.should.equal("value1");
+                        should.not.exist(value.field2);
+                        done();
+                    });
+
+                });
+        });
+
+
+    });
+
+
+    describe("Using the 'Map' class with Set fields", function() {
+        it("should be able to put a set field inside a Map", function (done) {
+            riak.map('map_test', 'embedded_set_in_map')
+                .register("Reg1", "Value1")
+                .set("SetField")
+                    .add("Element1")
+                    .add("Element2")
+                    .add("Element3", function (err, response) {
+                        should.not.exist(err);
+
+                        riak.map('map_test', 'embedded_set_in_map').value(function(err, value) {
+                            should.not.exist(err);
+                            value.SetField.should.instanceOf(Set);
+                            value.SetField.value(function(err, value){
+                                value.should.containEql("Element1");
+                                value.should.containEql("Element2");
+                                value.should.containEql("Element3");
+                                done();
+                            });
+                        });
+                });
+        });
+
+
+        it("should be able to remove elemnets from a set", function (done) {
+            riak.map('map_test', 'embedded_set_in_map')
+                .register("Reg1", "Value1")
+                .set("SetField")
+                    .add(["Element4","Element5","Element6" ])
+                    .remove("Element1")
+                    .remove("Element2", function (err, response) {
+                        should.not.exist(err);
+
+                        riak.map('map_test', 'embedded_set_in_map').value(function(err, value) {
+                            should.not.exist(err);
+                            value.SetField.should.instanceOf(Set);
+                            value.SetField.value(function(err, value){
+                                value.should.not.containEql("Element1");
+                                value.should.not.containEql("Element2");
+                                value.should.containEql("Element3");
+                                value.should.containEql("Element4");
+                                value.should.containEql("Element5");
+                                value.should.containEql("Element6");
+                                done();
+                            });
+                        });
+                    });
+        });
+
+    });
+
+
+
+    describe("Using the 'Map' class within another map to perform CRDT Counter operations", function() {
+        it("should be able to put a complex map within a map", function (done) {
+            riak.map('map_test', 'embedded_map')
+                .register("Reg1", "Value1")
+                .register("Reg2", "Value2")
+                .register("Reg3", "Value3")
+                .map("MapField")
+                    .register("MF_Reg1", "ValueMFReg", function (err, response) {
+                        should.not.exist(err);
+                        done();
+                    });
+        });
+
+        it("should be able to a complex map", function (done) {
+            this.timeout(TIMEOUT);
+            riak.map('map_test', 'embedded_map').value(function(err, value, data) {
+                should.not.exist(err);
+                value.Reg1.should.equal("Value1");
+                value.Reg2.should.equal("Value2");
+                value.Reg3.should.equal("Value3");
+                value.MapField.should.instanceOf(Map);
+                value.MapField.value( function(err, value) {
+                    should.not.exist(err);
+                    value["MF_Reg1"].should.equal("ValueMFReg");
+                    done();
+                });
+            });
+        });
+
+        it("should be able update selectively fields in existing map", function (done) {
+            riak.map('map_test', 'embedded_map')
+                .register("Reg1", "Value1New") // changed value of the existing field
+                .register("Reg4", "Value4")     // new field to be updated
+                .map("MapField")
+                    .register("MapFieldReg4", "Value MFR4")     // new field to be updated
+                    .register("MF_Reg1", "ValueMFRegNew", function (err, response) {
+                        should.not.exist(err);
+
+                        // now we are fetching value of the entire map from the server
+                        riak.map('map_test', 'embedded_map').value(function(err, value, data) {
+                            should.not.exist(err);
+                            value.Reg1.should.equal("Value1New");
+                            value.Reg2.should.equal("Value2");
+                            value.Reg3.should.equal("Value3");
+                            value.Reg4.should.equal("Value4");
+                            value.MapField.should.instanceOf(Map);
+                            value.MapField.value( function(err, value) {
+                                should.not.exist(err);
+                                value["MF_Reg1"].should.equal("ValueMFRegNew");
+                                done();
+                            });
+                        });
+                });
+        });
+
+    });
+
 
     after(function(done) { // teardown pre-test setup.
         this.timeout(TIMEOUT);
@@ -564,6 +876,38 @@ describe("Nodiak Riak Client Test Suite", function() {
                 },
                 function(next) {
                     var bucket = riak.bucket('siblings_test');
+                    bucket.objects.all(function(err, r_objs) {
+                        bucket.objects.delete(r_objs, function(err, result) {
+                            next(null, result);
+                        });
+                    });
+                },
+                function(next) {
+                    var bucket = riak.bucket('counter_test');
+                    bucket.objects.all(function(err, r_objs) {
+                        bucket.objects.delete(r_objs, function(err, result) {
+                            next(null, result);
+                        });
+                    });
+                },
+                function(next) {
+                    var bucket = riak.bucket('map_test');
+                    bucket.objects.all(function(err, r_objs) {
+                        bucket.objects.delete(r_objs, function(err, result) {
+                            next(null, result);
+                        });
+                    });
+                },
+                function(next) {
+                    var bucket = riak.bucket('map_test');
+                    bucket.objects.all(function(err, r_objs) {
+                        bucket.objects.delete(r_objs, function(err, result) {
+                            next(null, result);
+                        });
+                    });
+                },
+                function(next) {
+                    var bucket = riak.bucket('set_test');
                     bucket.objects.all(function(err, r_objs) {
                         bucket.objects.delete(r_objs, function(err, result) {
                             next(null, result);
