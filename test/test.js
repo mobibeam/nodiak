@@ -580,49 +580,101 @@ describe("Nodiak Riak Client Test Suite", function() {
     });
 
 
-    describe("Using the 'Set' class to perform CRDT Counter operations", function() {
+    describe("Using the 'Set' class to perform CRDT Set operations", function() {
         it("should be able to add array to set", function(done) {
-            riak.set('set_test', 'the_set').add("str1", function(err, response) {
-                should.not.exist(err);
-                done();
+            riak.set('set_test', 'the_set')
+                .add("str1", function(err, response) {
+                    should.not.exist(err);
+                    done();
             });
         });
 
         it("should be able to add array to set", function(done) {
-            riak.set('set_test', 'the_set').add(["str2", "str3", "str4" ], function(err, response) {
-                should.not.exist(err);
-                done();
+            riak.set('set_test', 'the_set')
+                .add(["str2", "str3", "str4" ], function(err, response) {
+                    should.not.exist(err);
+                    done();
             });
         });
 
         it("should be able to remove an element from a set", function(done) {
-            riak.set('set_test', 'the_set').remove("str2", function(err, response) {
-                should.not.exist(err);
-                done();
+            riak.set('set_test', 'the_set')
+                .remove("str2", function(err, response) {
+                    should.not.exist(err);
+                    done();
             });
         });
 
         it("should not be able to remove non-existing element from a set", function(done) {
-            riak.set('set_test', 'the_set').remove("nonexisitnigstr2", function(err, response) {
-                should.exist(err);
-                //err.message.should.match(/nonexisitnigstr2/);
-                done();
+            riak.set('set_test', 'the_set')
+                .remove("nonexisitnigstr2", function(err, response) {
+                    should.exist(err);
+                    err.message.should.match(/nonexisitnigstr2/);
+                    done();
             });
         });
 
-        it("should be able to get current vaue of the set and ", function(done) {
-            riak.set('set_test', 'the_set').value(function(err, value, data) {
-                should.not.exist(err);
-                value.should.length(3);
-                value.should.containEql("str1");
-                value.should.containEql("str3");
-                value.should.containEql("str4");
-                value.should.not.containEql("str2");
-                done();
-            });
+        it("should be able to get current value of the set and ", function(done) {
+            riak.set('set_test', 'the_set')
+                .value(function(err, value, data) {
+                    should.not.exist(err);
+                    value.should.length(3);
+                    value.should.containEql("str1");
+                    value.should.containEql("str3");
+                    value.should.containEql("str4");
+                    value.should.not.containEql("str2");
+                    done();
+                });
         });
 
     });
+
+
+
+    describe("Using namespaces for sets", function() {
+        it("should be able to add array to set and store that in the default namespace 'sets'", function(done) {
+            riak.set('set_test', 'set_space')
+                .add("str1")
+                .add("str2", function(err, response) {
+                    should.not.exist(err);
+                    done();
+                });
+        });
+
+        it("should be able to add array to set and store that in namespace 'setstest'", function(done) {
+            riak.set('set_test', 'set_space', 'setstest')
+                .add("test1")
+                .add("test2", function(err, response) {
+                    should.not.exist(err);
+                    done();
+                });
+        });
+
+        it("should be able to get current value of the set", function(done) {
+            riak.set('set_test', 'set_space')
+                .value(function(err, value, data) {
+                    should.not.exist(err);
+                    value.should.length(2);
+                    value.should.containEql("str1");
+                    value.should.containEql("str2");
+                    done();
+                });
+        });
+
+        it("should be able to get current value of the set from 'setstests", function(done) {
+            riak.set('set_test', 'set_space', 'setstest')
+                .value(function(err, value, data) {
+                    should.not.exist(err);
+                    value.should.length(2);
+                    value.should.containEql("test1");
+                    value.should.containEql("test2");
+                    done();
+                });
+        });
+
+
+    });
+
 
 
     describe("Using the 'Map' class to perform basic operations", function() {
@@ -802,6 +854,56 @@ describe("Nodiak Riak Client Test Suite", function() {
 
     });
 
+    describe("Using namespaces for maps", function() {
+        it("should be able to put values under key map_space in default space 'maps'", function (done) {
+            riak.map('map_test', 'map_space')
+                .register("Reg1", "Value1")
+                .register("Reg2", "Value2")
+                .register("Reg3", "Value3")
+                .map("MapField")
+                .register("MF_Reg1", "ValueMFReg", function (err, response) {
+                    should.not.exist(err);
+                    done();
+                });
+        });
+
+        it("should be able to put values under key map_space in space 'mapstest'", function (done) {
+            riak.map('map_test', 'map_space', "mapstest")
+                .register("Reg1", "ValueA")
+                .register("Reg2", "ValueB")
+                .register("Reg3", "ValueC")
+                .map("MapField")
+                .register("MF_Reg1", "ValueMFReg", function (err, response) {
+                    should.not.exist(err);
+                    done();
+                });
+        });
+
+        it("should be able to get values for key 'map_space' from default namespace 'maps", function (done) {
+            riak.map('map_test', 'map_space')
+                .value(function (err, value) {
+                    should.not.exist(err);
+                    value.Reg1.should.equal("Value1");
+                    value.Reg2.should.equal("Value2");
+                    value.Reg3.should.equal("Value3");
+                    done();
+                });
+        });
+
+        it("should be able to get values for key 'map_space' from namespace 'mapstest", function (done) {
+            riak.map('map_test', 'map_space', "mapstest")
+                .value(function (err, value) {
+                    should.not.exist(err);
+                    value.Reg1.should.equal("ValueA");
+                    value.Reg2.should.equal("ValueB");
+                    value.Reg3.should.equal("ValueC");
+                    done();
+                });
+        });
+
+    });
+
+
 
 
     describe("Using the 'Map' class within another map to perform CRDT Counter operations", function() {
@@ -860,6 +962,75 @@ describe("Nodiak Riak Client Test Suite", function() {
         });
 
     });
+
+    describe("Using the 'Map' class - complex chained operations and field removal", function() {
+        it("should be able to put a complex map containing all possible types of fields", function (done) {
+            this.timeout(TIMEOUT);
+            riak.map('map_test', 'c_chained_map')
+                .register("Reg1", "Value1")
+                .register("Reg2", "Value2")
+                .flag("Flag1", true)
+                .flag("Flag2", false)
+                .counter("Counter1", 5)
+                .counter("Counter2", 2)
+                .set("Set1", ["Set1.1", "Set1.2", "Set1.3"])
+                .set("Set2", ["Set2.1", "Set2.2", "Set2.3"])
+                .map("Map1", {map1reg1:"value m1r1", map1reg2:"value m1r2", map1reg3:13, map1set1:["m1s1.1", "m1s1.2", "m1s1.3"], map1flag1:true, map1submap1:{ms1reg1:"ms1r1.val1", ms1set1:["ms1.1", "ms1.2", "ms1.3"]} })
+                .map("Map2", {map1reg1:"value m2r1", map1reg2:"value m2r2", map2reg3:23, map1set1:["m2s1.1", "m2s1.2", "m2s1.3"], map2flag1:true, map2submap1:{ms2reg1:"ms2r1.val1", ms1set1:["ms2.1", "ms2.2", "ms2.3"]} })
+                .save(function (err, response) {
+                        should.not.exist(err);
+                        done();
+                    });
+        });
+
+        it("should be able retreive prebiously created map", function (done) {
+            riak.map('map_test', 'c_chained_map').value(function(err, value, data) {
+                should.not.exist(err);
+                value.Reg1.should.equal("Value1");
+                value.Reg2.should.equal("Value2");
+                value.Flag1.should.equal(true);
+                value.Flag2.should.equal(false);
+                value.Counter1.should.instanceOf(Counter);
+                value.Counter2.should.instanceOf(Counter);
+                value.Set1.should.instanceOf(Set);
+                value.Set2.should.instanceOf(Set);
+                value.Map1.should.instanceOf(Map);
+                value.Map2.should.instanceOf(Map);
+                done();
+            });
+        });
+
+        it("should be able to remove each type of the field", function (done) {
+            this.timeout(TIMEOUT);
+            riak.map('map_test', 'c_chained_map')
+                .register_remove("Reg1")
+                .flag_remove("Flag1", true)
+                .counter_remove("Counter1", 5)
+                .set_remove("Set1", ["Set1.1", "Set1.2", "Set1.3"])
+                .map_remove("Map1", {map1reg1:"value m1r1", map1reg2:"value m1r2", map1set1:["m1s1.1", "m1s1.2", "m1s1.3"], map1flag1:true, map1submap1:{ms1reg1:"ms1r1.val1", ms1set1:["ms1.1", "ms1.2", "ms1.3"]} })
+                .save(function (err, response) {
+                    should.not.exist(err);
+
+                    riak.map('map_test', 'c_chained_map').value(function(err, value, data) {
+                        should.not.exist(err);
+                        should.not.exist(value.Reg1);
+                        value.Reg2.should.equal("Value2");
+                        should.not.exist(value.Flag1);
+                        value.Flag2.should.equal(false);
+                        should.not.exist(value.Counter1);
+                        value.Counter2.should.instanceOf(Counter);
+                        should.not.exist(value.Set1);
+                        value.Set2.should.instanceOf(Set);
+                        should.not.exist(value.Map1);
+                        value.Map2.should.instanceOf(Map);
+                        done();
+                    });
+                });
+        });
+
+
+    });
+
 
 
     after(function(done) { // teardown pre-test setup.

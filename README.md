@@ -873,7 +873,103 @@ riak.mapred.inputs('test')
 >You can also pass an `Array` of `RObject`s into the `inputs` section of a MapReduce query.  Nodiak will automatically run through each object and convert the RObject into the `[bucket, key]` pairing that Riak expects.  Additionally, if you set `include_data` to `true` as the second `inputs` argument, then nodiak will also include the RObject's data, like `[bucket, key, data]`.
 
 
+## Sets
+You can use Riak 2.0 Data Type - set. To understand the basics of sets read [their documentation](http://docs.basho.com/riak/2.0.0/dev/using/data-types/#Sets)
+Before you can use sets you need to define name space in riak, instruction is available [here](http://docs.basho.com/riak/2.0.0/dev/using/data-types/#Setting-Up-Buckets-to-Use-Riak-Data-Types)
+
+
+```
+    riak-admin bucket-type create sets '{"props":{"datatype":"set"}}'
+    riak-admin bucket-type activate sets
+
+```
+
+### .add(element|array, callback)
+
+```javascript
+    var riak = require(nodiak).getClient(backend, host, port);
+
+    riak.set('set_test', 'the_set').add("str1", function(err, response) {
+        ...
+    });
+
+```
+
+or you can add in one step entire array:
+
+```javascript
+    var riak = require(nodiak).getClient(backend, host, port);
+
+    riak.set('set_test', 'the_set').add(["str1", "str2", "str3" ], function(err, response) {
+        ...
+    });
+
+```
+
+By defualt nodiak uses name space "sets". If you need to work with multiple namespaces provide additional parameter:
+
+```javascript
+    var riak = require(nodiak).getClient(backend, host, port);
+    var namespace = "extrasets"
+    riak.set('set_test', 'the_set', namespace).add("str1", function(err, response) {
+        ...
+    });
+
+```
+
+
+### .remove(element|array, callback)
+To remove element from a set you need to perform operation .remove. See the example below.
+
+```javascript
+    var riak = require(nodiak).getClient(backend, host, port);
+
+    riak.set('set_test', 'the_set')
+        .remove(["str1", "str2"], function(err, response) {
+            ...
+    });
+
+```
+
+
+### .value(callback)
+Function `value` lists of all elements from a set.
+
+```javascript
+    var riak = require(nodiak).getClient(backend, host, port);
+
+    riak.set('set_test', 'the_set')
+        .value(function(err, value, metadata) {
+            ...
+    });
+
+```
+
+
+
 # Tests
+
+Before you run test you need to register name spaces for maps, sets and counters by running the following command
+
+    $ riak-admin bucket-type create maps '{"props":{"datatype":"map"}}'
+    $ riak-admin bucket-type activate maps
+
+    $ riak-admin bucket-type create sets '{"props":{"datatype":"set"}}'
+    $ riak-admin bucket-type activate sets
+
+    $ riak-admin bucket-type create counters '{"props":{"datatype":"counter"}}'
+    $ riak-admin bucket-type activate counters
+
+
+    $ riak-admin bucket-type create mapstest '{"props":{"datatype":"map"}}'
+    $ riak-admin bucket-type activate mapstest
+
+    $ riak-admin bucket-type create setstest '{"props":{"datatype":"set"}}'
+    $ riak-admin bucket-type activate setstest
+
+    $ riak-admin bucket-type create counterstest '{"props":{"datatype":"counter"}}'
+    $ riak-admin bucket-type activate counterstest
+
 
 The test suite can be run by simply:
 
