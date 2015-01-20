@@ -17,6 +17,7 @@
 - [Sibling Auto-Resolution](#sibling-auto-resolution)
 - [Riak Search and Riak 2i's](#riak-search-and-riak-2i's)
 - [MapReduce](#mapreduce)
+- [Sets](#sets)
 - [Tests](#tests)
 - [Todos](#todos)
 
@@ -36,7 +37,7 @@ Nodiak's design is split across two general concepts.  The base client, which ha
 * Automatic exponential-backoff retries.
 * Cluster info operations.
 * Bulk/Batch object operations (Get, Save, Delete).
-* Riak CRDT Counters.
+* Riak CRDT Counters, Sets and Maps.
 * Sibling notification.
 * Parallel async and 'at once' sibling fetching.
 * Sibling resolution and auto-resolution support (default: client-side LWW).
@@ -171,6 +172,9 @@ riak.resources(function(err, response) {
 ##Bucket instance attributes
 * ####.name 
 >The name of the bucket in Riak as a `String`.
+
+* ####.namespace
+>The name of the bucket namespace for operations on CRDT types as a `String`. This option works as of Riak 2.0.0 and it require creation of the namespace before using riak-admin command. For more read [Setting Up Buckets to Use Riak Data Types](http://docs.basho.com/riak/latest/dev/using/data-types/#Setting-Up-Buckets-to-Use-Riak-Data-Types)
 
 * ####.props
 >An `Object` containing the Riak [bucket properties](http://wiki.basho.com/HTTP-Set-Bucket-Properties.html).  Defaults to `{}`. 

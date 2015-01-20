@@ -2,6 +2,7 @@
 
 // Copyright (c) 2012 Coradine Aviation Systems
 // Copyright (c) 2012 Nathan Aschbacher
+// Copyright (c) 2015 Lukasz Dutka
 
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -38,6 +39,8 @@ describe("Nodiak Riak Client Test Suite", function() {
     var Map = require("../lib/map");
     var Counter = require("../lib/counter");
     var Set = require("../lib/set");
+    var Bucket = require("../lib/bucket");
+    var RObject = require("../lib/robject");
 
     before(function(done){ // bootstrap settings and data for tests.
         this.timeout(TIMEOUT);
@@ -552,7 +555,6 @@ describe("Nodiak Riak Client Test Suite", function() {
             });
         });
 
-
         it("should be able to add to a counter", function(done) {
             riak.counter('counter_test', 'the_count').add(4, function(err, response) {
                 should.not.exist(err);
@@ -577,8 +579,46 @@ describe("Nodiak Riak Client Test Suite", function() {
             });
         });
 
-    });
+        it("should be able to to keep different counters whithin seperate name spaces ", function(done) {
 
+            riak.counter('counter_test', 'scount').add(121, function(err, response) { // first keep counter in old school Riak 1.4.x namespace
+                should.not.exist(err);
+
+                riak.counter('counter_test', 'scount', "counters").add(53, function(err, response) { // we keep counter under one name space riak 2.x
+                    should.not.exist(err);
+
+                    riak.counter('counter_test', 'scount', "counterstest").add(79, function(err, response) { // we keep counter under second name space riak 2.x
+                        should.not.exist(err);
+
+                        // now we need to get back state of those different counters
+                        riak.counter('counter_test', 'scount').value(function(err, response) { // first get back old scool defined counters
+                            should.not.exist(err);
+                            response.should.eql(121);
+
+                            riak.counter('counter_test', 'scount', "counters").value(function(err, response) { // now we are getting back counter from 'counters' namespace
+                                should.not.exist(err);
+                                response.should.eql(53);
+
+                                riak.counter('counter_test', 'scount', "counterstest").value(function(err, response) { // now we are getting back counter from 'counterstest' namespace
+                                    should.not.exist(err);
+                                    response.should.eql(79);
+                                    done();
+                                });
+
+                            });
+
+                        });
+
+
+                    });
+
+                });
+
+            });
+        });
+
+
+    });
 
     describe("Using the 'Set' class to perform CRDT Set operations", function() {
         it("should be able to add array to set", function(done) {
@@ -629,8 +669,6 @@ describe("Nodiak Riak Client Test Suite", function() {
 
     });
 
-
-
     describe("Using namespaces for sets", function() {
         it("should be able to add array to set and store that in the default namespace 'sets'", function(done) {
             riak.set('set_test', 'set_space')
@@ -674,8 +712,6 @@ describe("Nodiak Riak Client Test Suite", function() {
 
 
     });
-
-
 
     describe("Using the 'Map' class to perform basic operations", function() {
 
@@ -802,7 +838,6 @@ describe("Nodiak Riak Client Test Suite", function() {
 
     });
 
-
     describe("Using the 'Map' class with Set fields", function() {
         it("should be able to put a set field inside a Map", function (done) {
             riak.map('map_test', 'embedded_set_in_map')
@@ -902,9 +937,6 @@ describe("Nodiak Riak Client Test Suite", function() {
         });
 
     });
-
-
-
 
     describe("Using the 'Map' class within another map to perform CRDT Counter operations", function() {
         it("should be able to put a complex map within a map", function (done) {
@@ -1031,6 +1063,175 @@ describe("Nodiak Riak Client Test Suite", function() {
 
     });
 
+    describe("Using the 'Bucket' class to interact with buckets and objects under riak2.0 namespaces", function() {
+        it("should be able to read bucket properties from a bucket stored within 'maps' namespace", function(done) {
+            riak.bucket("random_bucket", "maps")
+                .getProps(function(err, props) {
+                    should.not.exist(err);
+                    props.should.be.an.Object.and.have.property('name', 'random_bucket');
+                    done();
+            });
+        });
+
+        it("should not be able to read bucket properties from a bucket stored within non-existing namespace", function(done) {
+            riak.bucket("random_bucket", "_nonexistingmaps")
+                .getProps(function(err, props) {
+                    should.exist(err);
+                    done();
+            });
+        });
+
+        it("should be able to save properties to a bucket", function(done) {
+            var bucket = riak.bucket('random_bucket', "maps");
+
+            bucket.getProps(function(err, props) {
+                should.not.exist(err);
+
+                var toggled = props.last_write_wins ? false : true;
+                bucket.props.last_write_wins = toggled;
+
+                bucket.saveProps(function(err, response) {
+                    should.not.exist(err);
+
+                    bucket.getProps(function(err, props) {
+                        should.not.exist(err);
+                        props.last_write_wins.should.equal(toggled);
+                        done();
+                    });
+                });
+            });
+        });
+
+        it("should be able to list all buckets and namespaces isolates buckets in the returned lists", function(done) {
+            this.timeout(TIMEOUT);
+
+            riak.set('bucketsetA', 'set1', "sets")
+                .add(["str2", "str3", "str4" ], function(err, response) {
+                    should.not.exist(err);
+
+                    riak.set('bucketsetB', 'set2', "sets")
+                        .add(["str2", "str3", "str4" ], function(err, response) {
+                            should.not.exist(err);
+
+                            riak.set('bucketsetC', 'set3', "setstest")
+                                .add(["str2", "str3", "str4" ], function(err, response) {
+                                    should.not.exist(err);
+
+                                    riak._bucket.list({namespace: "sets"}, function (err, buckets) {
+                                        should.not.exist(err);
+                                        buckets.should.be.an.instanceOf(Array);
+                                        buckets.length.should.be.above(1);
+                                        buckets.should.containEql("bucketsetA");
+                                        buckets.should.containEql("bucketsetB");
+                                        buckets.should.not.containEql("bucketsetC");
+
+                                        riak._bucket.list({namespace: "setstest"}, function (err, buckets) {
+                                            should.not.exist(err);
+                                            buckets.should.be.an.instanceOf(Array);
+                                            buckets.should.not.containEql("bucketsetA");
+                                            buckets.should.not.containEql("bucketsetB");
+                                            buckets.should.containEql("bucketsetC");
+                                            done();
+                                        });
+
+
+                                    });
+                                });
+                        });
+                });
+
+
+        });
+
+        it("should be able to list all keys in a bucket stored within a name space", function(done) {
+            riak.bucket('bucketsetA', "sets")
+                .search.keys(function (err, keys){
+                    should.not.exist(err);
+                    keys.should.be.an.instanceOf(Array);
+                    keys.should.containEql("set1");
+                    keys.should.not.containEql("set2");
+
+                    riak.bucket('bucketsetB', "sets")
+                        .search.keys(function (err, keys) {
+                            should.not.exist(err);
+                            keys.should.be.an.instanceOf(Array);
+                            keys.should.not.containEql("set1");
+                            keys.should.containEql("set2");
+
+                            done();
+                        });
+                });
+        });
+
+        it("should be able to check existence of a previously saved key", function(done) {
+            riak.bucket('bucketsetA', "sets")
+                .objects.exists("set1", function (err, exists){
+                    should.not.exist(err);
+                    exists.should.equal(true);
+                    done();
+                });
+        });
+
+        it("should be able to check non-existence of a non-existing key", function(done) {
+            riak.bucket('bucketsetA', "sets")
+                .objects.exists("set1nonexisting", function (err, exists){
+                    should.not.exist(err);
+                    exists.should.equal(false);
+                    done();
+                });
+        });
+
+
+    });
+
+    describe("Using the 'RObject' class to perform fetch/save/delete operations under riak2.0 namespaces", function() {
+
+        var obj;
+
+        it("should be able to store a map", function(done) {
+            riak.map('map_test', 'robjectmap', "maps")
+                .register("field1", "value1")
+                .register("field2", "value2", function(err, response) {
+                    should.not.exist(err);
+                    done();
+                    });
+        });
+
+        it("should be able to hydrate an uninitialized RObject from Riak", function(done) {
+            obj = riak.map('map_test', 'robjectmap', "maps" );
+            // fetch api is defined in RObject which is inherited by Map.
+            obj.fetch(function(err, result) {
+                should.not.exist(err);
+                done();
+            });
+        });
+
+        it("should be able to save a hydrated RObject to Riak", function(done) {
+            obj.save(function(err, result) {
+                should.not.exist(err);
+                done();
+            });
+        });
+
+        it("should be able to delete a hydrate a RObject from Riak and after that we check if it's removed", function(done) {
+            riak.bucket('map_test', "maps")
+                .objects.exists("robjectmap", function (err, exists) {
+                    should.not.exist(err);
+                    exists.should.equal(true);
+
+                    obj.delete(function(err, result) {
+                        should.not.exist(err);
+                        riak.bucket('map_test', "maps")
+                            .objects.exists("robjectmap", function (err, exists) {
+                                should.not.exist(err);
+                                exists.should.equal(false);
+                                done();
+                            });
+                    });
+
+                });
+        });
+    });
 
 
     after(function(done) { // teardown pre-test setup.
@@ -1062,7 +1263,7 @@ describe("Nodiak Riak Client Test Suite", function() {
                     });
                 },
                 function(next) {
-                    var bucket = riak.bucket('map_test');
+                    var bucket = riak.bucket('counter_test', "counters");
                     bucket.objects.all(function(err, r_objs) {
                         bucket.objects.delete(r_objs, function(err, result) {
                             next(null, result);
@@ -1070,7 +1271,7 @@ describe("Nodiak Riak Client Test Suite", function() {
                     });
                 },
                 function(next) {
-                    var bucket = riak.bucket('map_test');
+                    var bucket = riak.bucket('counter_test', "counterstest");
                     bucket.objects.all(function(err, r_objs) {
                         bucket.objects.delete(r_objs, function(err, result) {
                             next(null, result);
@@ -1078,7 +1279,31 @@ describe("Nodiak Riak Client Test Suite", function() {
                     });
                 },
                 function(next) {
-                    var bucket = riak.bucket('set_test');
+                    var bucket = riak.bucket('map_test', "maps");
+                    bucket.objects.all(function(err, r_objs) {
+                        bucket.objects.delete(r_objs, function(err, result) {
+                            next(null, result);
+                        });
+                    });
+                },
+                function(next) {
+                    var bucket = riak.bucket('map_test', "mapstest");
+                    bucket.objects.all(function(err, r_objs) {
+                        bucket.objects.delete(r_objs, function(err, result) {
+                            next(null, result);
+                        });
+                    });
+                },
+                function(next) {
+                    var bucket = riak.bucket('set_test', "sets");
+                    bucket.objects.all(function(err, r_objs) {
+                        bucket.objects.delete(r_objs, function(err, result) {
+                            next(null, result);
+                        });
+                    });
+                },
+                function(next) {
+                    var bucket = riak.bucket('set_test', "setstest");
                     bucket.objects.all(function(err, r_objs) {
                         bucket.objects.delete(r_objs, function(err, result) {
                             next(null, result);

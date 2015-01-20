@@ -4,7 +4,8 @@
     "description": "Nodiak is a Node.js client for the Riak Distributed Database",
     "author": "Nathan Aschbacher <nathan.aschbacher@gmail.com>",
     "contributors": [ 
-        { "name": "Nathan Aschbacher", "email": "nathan.aschbacher@gmail.com" }
+        { "name": "Nathan Aschbacher", "email": "nathan.aschbacher@gmail.com" },
+        { "name": "Lukasz Dutka", "email": "lukasz.dutka@gmail.com" }
     ],
     "license": "MIT",
     "main": "index.js",
