@@ -31,8 +31,14 @@ describe("Nodiak Riak Client Test Suite", function() {
     var port = process.env.NODIAK_PORT || '8098';
     var search_enabled = process.env.NODIAK_SEARCH && process.env.NODIAK_SEARCH != 'false' ? true : false;
     var twoi_enabled = process.env.NODIAK_2I && process.env.NODIAK_2I != 'false'? true : false;
+    if (backend === "poolee"){
+        var poolee_servers = process.env.NODIAK_POOLEE_HOSTS || 'localhost:8098'; //NODIAK_POOLEE_HOSTS can contains list of servers with ports separated by comma.
+        var poolee_options = {};
+        var riak = require('../index.js').getClient(backend, poolee_servers, poolee_options);
+    }else{
+        var riak = require('../index.js').getClient(backend, host, port);
+    }
 
-    var riak = require('../index.js').getClient(backend, host, port);
     
     var async = require('async');
     var should = require('should');

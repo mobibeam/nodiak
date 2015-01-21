@@ -1,37 +1,44 @@
 {
-    "name": "nodiak",
-    "version": "0.4.3",
-    "description": "Nodiak is a Node.js client for the Riak Distributed Database",
-    "author": "Nathan Aschbacher <nathan.aschbacher@gmail.com>",
-    "contributors": [ 
-        { "name": "Nathan Aschbacher", "email": "nathan.aschbacher@gmail.com" },
-        { "name": "Lukasz Dutka", "email": "lukasz.dutka@gmail.com" }
-    ],
-    "license": "MIT",
-    "main": "index.js",
-    "scripts": {
-        "test": "./node_modules/.bin/mocha"
+  "name": "nodiak",
+  "version": "0.4.3",
+  "description": "Nodiak is a Node.js client for the Riak Distributed Database",
+  "author": "Nathan Aschbacher <nathan.aschbacher@gmail.com>",
+  "contributors": [
+    {
+      "name": "Nathan Aschbacher",
+      "email": "nathan.aschbacher@gmail.com"
     },
-    "repository": {
-        "type": "git",
-        "url": "git://github.com/nathanaschbacher/nodiak.git"
-    },
-    "dependencies": {
-        "deepmerge": ">=0.2.5",
-        "async": ">=0.2.5",
-        "trustfund": ">=0.1.0",
-        "agentkeepalive": "0.2.2"
-    },
-    "devDependencies": {
-        "mocha": "*",
-        "should": "*"
-    },
-    "keywords": [
-        "riak",
-        "nodiak",
-        "basho"
-    ],
-    "engines": {
-        "node": ">=0.8.x"
+    {
+      "name": "Lukasz Dutka",
+      "email": "lukasz.dutka@gmail.com"
     }
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/nathanaschbacher/nodiak.git"
+  },
+  "dependencies": {
+    "agentkeepalive": "0.2.2",
+    "async": ">=0.2.5",
+    "deepmerge": ">=0.2.5",
+    "poolee": "^0.4.15",
+    "trustfund": ">=0.1.0"
+  },
+  "devDependencies": {
+    "mocha": "*",
+    "should": "*"
+  },
+  "keywords": [
+    "riak",
+    "nodiak",
+    "basho"
+  ],
+  "engines": {
+    "node": ">=0.8.x"
+  }
 }
